@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Free response of a damped system — ME 353</title>
+<style>
+  :root {
+    --ink: #1B2A4A; --text: #222222; --muted: #6B7280; --rule: #D9DEE7;
+    --panel: #F3F5F9; --blue: #2B5DBF; --orange: #E07A1F; --green: #2E8B57; --red: #B5321E;
+    --tint-blue: #EEF3FC; --tint-orange: #FFF4E8; --tint-green: #EDF6F0; --tint-red: #FBEEEC;
+    --serif: Cambria, Georgia, "Times New Roman", serif;
+    --sans: Calibri, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; color: var(--text); font-family: var(--sans); font-size: 16px; }
+  body { padding: 22px 28px 18px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 28px; margin-bottom: 14px; }
+  h1 { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--ink); margin: 0; }
+  header p { margin: 0; color: var(--muted); font-size: 15px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+  .presets span { color: var(--muted); font-size: 14px; align-self: center; margin-right: 2px; }
+  .presets button { font: inherit; font-size: 14px; padding: 6px 12px; border: 1px solid var(--rule); background: #fff;
+    color: var(--ink); border-radius: 6px; cursor: pointer; }
+  .presets button:hover { border-color: var(--ink); }
+  .presets button:focus-visible, input:focus-visible, .seg button:focus-visible, .play button:focus-visible, select:focus-visible
+    { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .presets button.ic { border-style: dashed; }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.95fr); gap: 22px; align-items: start; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+  canvas { display: block; width: 100%; }
+  .stage { border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .stage canvas.anim { height: 230px; }
+  .stage canvas.plot { height: 360px; }
+  .energy { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 8px 14px 10px; font-size: 14px; color: var(--muted); }
+  .energy .bar { height: 12px; background: var(--tint-orange); border-radius: 6px; overflow: hidden; }
+  .energy .bar i { display: block; height: 100%; background: var(--blue); width: 100%; border-radius: 6px; transition: none; }
+  .energy b { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 4.5em; text-align: right; }
+
+  .play { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 14px; border-top: 1px solid var(--rule); }
+  .play button { font: inherit; font-size: 15px; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; }
+  .play button.secondary { background: #fff; color: var(--ink); }
+  .play label { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .play select { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+  .play .scrub { flex: 1 1 220px; display: flex; align-items: center; gap: 10px; }
+  .play .scrub input { flex: 1; }
+  .play .scrub b { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 5.2em; }
+
+  .controls { background: var(--panel); border-radius: 8px; padding: 16px 18px 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: #fff; margin-bottom: 14px; }
+  .seg button { font: inherit; font-size: 14px; padding: 6px 12px; border: 0; background: #fff; color: var(--muted); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .slider { display: grid; grid-template-columns: 5.2em 1fr 4.4em; align-items: center; gap: 10px; margin: 6px 0 10px; }
+  .slider label { font-family: var(--serif); font-size: 19px; color: var(--ink); }
+  .slider label small { font-family: var(--sans); font-size: 12px; color: var(--muted); display: block; line-height: 1; }
+  .slider output { font-variant-numeric: tabular-nums; font-size: 16px; text-align: right; color: var(--ink); }
+  input[type=range] { width: 100%; accent-color: var(--ink); height: 28px; margin: 0; }
+  #zeta-row input[type=range] { accent-color: var(--orange); }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; font-size: 14px; color: var(--text); }
+  .toggles label { display: flex; align-items: center; gap: 6px; }
+  .derived { margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+
+  .readout { margin-top: 18px; }
+  .badge { display: inline-block; font-size: 15px; font-weight: 700; padding: 4px 12px; border-radius: 6px; margin-bottom: 8px; }
+  .badge.under { background: var(--tint-blue); color: var(--blue); }
+  .badge.zero { background: var(--tint-blue); color: var(--blue); }
+  .badge.crit { background: var(--tint-green); color: var(--green); }
+  .badge.over { background: var(--tint-red); color: var(--red); }
+  .formula { font-family: var(--serif); font-size: 19px; color: var(--ink); line-height: 1.5; margin: 4px 0 10px; }
+  .formula sup, .formula sub { font-size: 70%; }
+  .formula .e { color: var(--orange); } .formula .o { color: var(--blue); }
+  .vals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; font-size: 15px; }
+  .vals div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--rule); padding: 3px 0; }
+  .vals div span:first-child { font-family: var(--serif); color: var(--ink); }
+  .vals div span:last-child { font-variant-numeric: tabular-nums; }
+  .verdict { margin: 12px 0 0; font-size: 15px; line-height: 1.45; }
+  .roots { display: grid; grid-template-columns: 200px 1fr; gap: 14px; align-items: center; margin-top: 14px; }
+  .roots canvas { width: 200px; height: 200px; border: 1px solid var(--rule); border-radius: 8px; }
+  .roots p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.45; }
+  .roots p b { color: var(--ink); font-family: var(--serif); font-weight: 400; font-size: 15px; }
+  footer { margin-top: 16px; color: var(--muted); font-size: 12.5px; }
+  @media (prefers-reduced-motion: reduce) { .energy .bar i { transition: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Free response of a damped system</h1>
+  <p>Drag ζ and watch the mass, the curve, and the roots change together.</p>
+</header>
+
+<div class="presets" role="group" aria-label="Presets">
+  <span>Damping:</span>
+  <button data-z="0">undamped ζ = 0</button>
+  <button data-z="0.05">light ζ = 0.05</button>
+  <button data-z="0.3">moderate ζ = 0.3</button>
+  <button data-z="0.7">heavy ζ = 0.7</button>
+  <button data-z="1">critical ζ = 1</button>
+  <button data-z="2">overdamped ζ = 2</button>
+  <span style="margin-left:10px">Start:</span>
+  <button class="ic" data-ic="release">release from x₀ = 1</button>
+  <button class="ic" data-ic="kick">kick from rest, v₀ = 1</button>
+</div>
+
+<div class="grid">
+  <section class="stage" aria-label="Animation and response plot">
+    <canvas class="anim" id="anim"></canvas>
+    <div class="energy">
+      <span>Mechanical energy left</span>
+      <div class="bar"><i id="ebar"></i></div>
+      <b id="eval">100 %</b>
+    </div>
+    <canvas class="plot" id="plot"></canvas>
+    <div class="play">
+      <button id="playBtn">Pause</button>
+      <button id="restartBtn" class="secondary">Restart</button>
+      <label>Speed <select id="speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label>
+      <div class="scrub"><label for="tslider">t</label><input type="range" id="tslider" min="0" max="20" step="0.01" value="0"><b id="tval">0.00 s</b></div>
+    </div>
+  </section>
+
+  <aside class="controls" aria-label="Parameters">
+    <div class="seg" role="group" aria-label="Which parameters to set">
+      <button id="modeZ" aria-pressed="true">Set ζ and ωₙ</button>
+      <button id="modeMKC" aria-pressed="false">Set m, k, c</button>
+    </div>
+
+    <div id="zw">
+      <div class="slider" id="zeta-row"><label for="z">ζ <small>damping ratio</small></label><input type="range" id="z" min="0" max="2" step="0.01" value="0.1"><output for="z" id="zo">0.10</output></div>
+      <div class="slider"><label for="wn">ω<sub>n</sub> <small>rad/s</small></label><input type="range" id="wn" min="0.5" max="4" step="0.05" value="1"><output for="wn" id="wno">1.00</output></div>
+    </div>
+    <div id="mkc" hidden>
+      <div class="slider"><label for="m">m <small>kg</small></label><input type="range" id="m" min="0.5" max="5" step="0.1" value="1"><output for="m" id="mo">1.0</output></div>
+      <div class="slider"><label for="k">k <small>N/m</small></label><input type="range" id="k" min="0.5" max="40" step="0.5" value="1"><output for="k" id="ko">1.0</output></div>
+      <div class="slider"><label for="c">c <small>N·s/m</small></label><input type="range" id="c" min="0" max="20" step="0.05" value="0.2"><output for="c" id="co">0.20</output></div>
+    </div>
+    <div class="slider"><label for="x0">x<sub>0</sub> <small>m</small></label><input type="range" id="x0" min="-1.5" max="1.5" step="0.05" value="1"><output for="x0" id="x0o">1.00</output></div>
+    <div class="slider"><label for="v0">v<sub>0</sub> <small>m/s</small></label><input type="range" id="v0" min="-3" max="3" step="0.05" value="0"><output for="v0" id="v0o">0.00</output></div>
+
+    <div class="toggles">
+      <label><input type="checkbox" id="showRef" checked> show undamped reference (ζ = 0, same start)</label>
+      <label><input type="checkbox" id="showEnv" checked> show envelope ±X e<sup>−ζωₙt</sup></label>
+    </div>
+    <div class="derived" id="derived"></div>
+
+    <div class="readout">
+      <span class="badge under" id="badge">Underdamped</span>
+      <div class="formula" id="formula"></div>
+      <div class="vals" id="vals"></div>
+      <p class="verdict" id="verdict"></p>
+      <div class="roots">
+        <canvas id="roots" aria-label="Root locations in the complex plane"></canvas>
+        <p id="rootsText"></p>
+      </div>
+    </div>
+  </aside>
+</div>
+<footer>ME 353 Engineering Vibrations · Lecture 4 · x(t) solves m ẍ + c ẋ + k x = 0 with x(0) = x₀, ẋ(0) = v₀. Time window 0–20 s.</footer>
+
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const C = { ink: "#1B2A4A", blue: "#2B5DBF", orange: "#E07A1F", green: "#2E8B57", red: "#B5321E", muted: "#6B7280", rule: "#D9DEE7", grid: "#E9EDF3" };
+  const T_END = 20;
+
+  // ---------------- state ----------------
+  const S = { z: 0.1, wn: 1, m: 1, k: 1, c: 0.2, x0: 1, v0: 0, mode: "zw", t: 0, playing: true, speed: 1, showRef: true, showEnv: true };
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) S.playing = false;
+
+  // ---------------- physics ----------------
+  function xt(t, z, wn, x0, v0) {
+    if (z < 1e-9) return x0 * Math.cos(wn * t) + v0 / wn * Math.sin(wn * t);
+    if (z < 1 - 1e-9) { const wd = wn * Math.sqrt(1 - z * z); return Math.exp(-z * wn * t) * (x0 * Math.cos(wd * t) + (v0 + z * wn * x0) / wd * Math.sin(wd * t)); }
+    if (Math.abs(z - 1) < 1e-9) return Math.exp(-wn * t) * (x0 + (v0 + wn * x0) * t);
+    const s = wn * Math.sqrt(z * z - 1); return Math.exp(-z * wn * t) * (x0 * Math.cosh(s * t) + (v0 + z * wn * x0) / s * Math.sinh(s * t));
+  }
+  const x = t => xt(t, S.z, S.wn, S.x0, S.v0);
+  const v = t => (x(t + 1e-4) - x(t - 1e-4)) / 2e-4;
+  function regime() { return S.z < 1e-9 ? "zero" : S.z < 1 - 1e-9 ? "under" : Math.abs(S.z - 1) < 1e-9 ? "crit" : "over"; }
+  function derived() {
+    const z = S.z, wn = S.wn, x0 = S.x0, v0 = S.v0, r = regime();
+    const d = { r, wn, z, cc: 2 * Math.sqrt(S.m * S.k) };
+    if (r === "zero" || r === "under") {
+      d.wd = wn * Math.sqrt(1 - z * z); d.Td = 2 * Math.PI / d.wd;
+      d.X = Math.sqrt(x0 * x0 + Math.pow((v0 + z * wn * x0) / d.wd, 2));
+      d.phi = Math.atan2(d.wd * x0, v0 + z * wn * x0);
+      d.peakRatio = Math.exp(-z * wn * d.Td);
+      d.lam = [[-z * wn, d.wd], [-z * wn, -d.wd]];
+    } else if (r === "crit") { d.lam = [[-wn, 0], [-wn, 0]]; }
+    else { const s = wn * Math.sqrt(z * z - 1); d.s = s; d.lam = [[-z * wn + s, 0], [-z * wn - s, 0]]; }
+    // time to settle within 5 % of the largest excursion (numeric, within window)
+    let peak = 0; const N = 2000; const xs = new Array(N + 1);
+    for (let i = 0; i <= N; i++) { xs[i] = x(i * T_END / N); peak = Math.max(peak, Math.abs(xs[i])); }
+    d.peak = peak; let last = -1;
+    for (let i = N; i >= 0; i--) { if (Math.abs(xs[i]) > 0.05 * peak) { last = i; break; } }
+    d.t5 = (r === "zero") ? Infinity : (last === N ? Infinity : last * T_END / N);
+    return d;
+  }
+
+  // ---------------- formatting ----------------
+  const f2 = n => n.toFixed(2), f3 = n => n.toFixed(3);
+  const deg = r => (r * 180 / Math.PI).toFixed(0) + "°";
+  const sg = n => (n < 0 ? "−" : "+") + " " + Math.abs(n).toFixed(2);
+
+  function updateText() {
+    const d = derived(), r = d.r;
+    $("zo").textContent = f2(S.z); $("wno").textContent = f2(S.wn);
+    $("mo").textContent = S.m.toFixed(1); $("ko").textContent = S.k.toFixed(1); $("co").textContent = f2(S.c);
+    $("x0o").textContent = f2(S.x0); $("v0o").textContent = f2(S.v0);
+    $("derived").innerHTML = S.mode === "zw"
+      ? `Equivalent with m = 1 kg: k = ${f2(S.k)} N/m, c = ${f2(S.c)} N·s/m (critical c<sub>c</sub> = ${f2(d.cc)})`
+      : `ω<sub>n</sub> = √(k/m) = ${f2(S.wn)} rad/s, c<sub>c</sub> = 2√(mk) = ${f2(d.cc)} N·s/m, ζ = c/c<sub>c</sub> = ${f2(S.z)}`;
+
+    const badge = $("badge");
+    badge.className = "badge " + r;
+    badge.textContent = { zero: "Undamped (ζ = 0)", under: "Underdamped (0 < ζ < 1)", crit: "Critically damped (ζ = 1)", over: "Overdamped (ζ > 1)" }[r];
+
+    let formula, vals, verdict;
+    if (r === "zero" || r === "under") {
+      formula = `x(t) = ${f3(d.X)} <span class="e">e<sup>−${f3(S.z * S.wn)}·t</sup></span> <span class="o">sin(${f3(d.wd)}·t + ${d.phi.toFixed(2)})</span>`;
+      if (r === "zero") formula = `x(t) = ${f3(d.X)} <span class="o">sin(${f3(d.wd)}·t + ${d.phi.toFixed(2)})</span>`;
+      vals = [["ω<sub>n</sub>", f3(S.wn) + " rad/s"], ["ζ", f2(S.z)], ["ω<sub>d</sub>", f3(d.wd) + " rad/s"], ["T<sub>d</sub> = 2π/ω<sub>d</sub>", f2(d.Td) + " s"],
+        ["X", f3(d.X)], ["φ", d.phi.toFixed(2) + " rad = " + deg(d.phi)],
+        ["next peak / this peak", r === "zero" ? "1.000" : f3(d.peakRatio)], ["within 5 % after", isFinite(d.t5) ? f2(d.t5) + " s" : (r === "zero" ? "never" : "> 20 s")]];
+      const slower = ((1 - d.wd / S.wn) * 100);
+      verdict = r === "zero"
+        ? `No damping: the amplitude stays at ${f3(d.X)} forever and the mass oscillates at ω<sub>n</sub>. Energy is conserved.`
+        : `The mass still oscillates, at ω<sub>d</sub> = ${f3(d.wd)} rad/s (${slower < 0.05 ? "less than 0.05" : slower.toFixed(1)} % slower than ω<sub>n</sub>), while the envelope shrinks each peak to ${(d.peakRatio * 100).toFixed(0)} % of the one before. ` +
+          (isFinite(d.t5) ? `It is within 5 % of its largest swing after ${f2(d.t5)} s, about ${(d.t5 / d.Td).toFixed(1)} cycles.` : `It has not settled within 5 % inside the 20 s window.`);
+    } else if (r === "crit") {
+      formula = `x(t) = <span class="e">e<sup>−${f3(S.wn)}·t</sup></span> [ ${f2(S.x0)} ${sg(S.v0 + S.wn * S.x0)}·t ]`;
+      vals = [["ω<sub>n</sub>", f3(S.wn) + " rad/s"], ["ζ", "1.00"], ["λ<sub>1</sub> = λ<sub>2</sub>", "−" + f3(S.wn)], ["ω<sub>d</sub>", "0 (no oscillation)"],
+        ["largest |x|", f3(d.peak)], ["within 5 % after", isFinite(d.t5) ? f2(d.t5) + " s" : "> 20 s"]];
+      verdict = `Critical damping: the mass returns to rest as fast as possible without oscillating` + (S.v0 * S.x0 < 0 ? ` (it can cross zero once because v<sub>0</sub> points against x<sub>0</sub>)` : ``) + `. ` +
+        (isFinite(d.t5) ? `Within 5 % of its largest excursion after ${f2(d.t5)} s.` : `Still settling at 20 s.`);
+    } else {
+      const A = (S.v0 + S.z * S.wn * S.x0) / d.s;
+      formula = `x(t) = <span class="e">e<sup>−${f3(S.z * S.wn)}·t</sup></span> [ ${f2(S.x0)} cosh(${f3(d.s)}·t) ${sg(A)} sinh(${f3(d.s)}·t) ]`;
+      vals = [["ω<sub>n</sub>", f3(S.wn) + " rad/s"], ["ζ", f2(S.z)], ["λ<sub>1</sub>", f3(d.lam[0][0])], ["λ<sub>2</sub>", f3(d.lam[1][0])],
+        ["largest |x|", f3(d.peak)], ["within 5 % after", isFinite(d.t5) ? f2(d.t5) + " s" : "> 20 s"]];
+      verdict = `Overdamped: two real roots, no oscillation. The slow root λ<sub>1</sub> = ${f3(d.lam[0][0])} controls how long the creep back takes` +
+        (isFinite(d.t5) ? ` — within 5 % after ${f2(d.t5)} s.` : ` — still settling at 20 s.`) + ` More damping than critical makes the return slower, not faster.`;
+    }
+    $("formula").innerHTML = formula;
+    $("vals").innerHTML = vals.map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join("");
+    $("verdict").innerHTML = verdict;
+    $("rootsText").innerHTML = r === "zero" || r === "under"
+      ? `Roots <b>λ<sub>1,2</sub> = −ζω<sub>n</sub> ± jω<sub>d</sub></b> = ${f3(d.lam[0][0])} ± j ${f3(d.lam[0][1])}. They sit on a circle of radius ω<sub>n</sub>; cos θ = ζ. Real part sets the decay, imaginary part the oscillation.`
+      : r === "crit" ? `Both roots meet on the real axis at <b>λ = −ω<sub>n</sub></b> = −${f3(S.wn)}. This is the boundary between oscillating and not.`
+      : `Both roots are real and negative: <b>λ<sub>1</sub></b> = ${f3(d.lam[0][0])}, <b>λ<sub>2</sub></b> = ${f3(d.lam[1][0])}. The one closer to zero decays slowest and dominates the response.`;
+    drawRoots(d);
+    return d;
+  }
+
+  // ---------------- canvas helpers ----------------
+  function setupCanvas(cv) {
+    const dpr = window.devicePixelRatio || 1; const rect = cv.getBoundingClientRect();
+    if (cv.width !== Math.round(rect.width * dpr) || cv.height !== Math.round(rect.height * dpr)) { cv.width = Math.round(rect.width * dpr); cv.height = Math.round(rect.height * dpr); }
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w: rect.width, h: rect.height };
+  }
+
+  // ---------------- animation of the mass-spring-damper ----------------
+  function drawAnim(t) {
+    const { g, w, h } = setupCanvas($("anim")); g.clearRect(0, 0, w, h);
+    const scale = Math.min(70, w * 0.09);   // px per metre
+    const wallX = 40, eqX = w * 0.55, floorY = h - 34, massW = 96, massH = 96;
+    const xd = x(t); const massX = eqX + xd * scale;  // left edge of mass
+    // wall
+    g.fillStyle = "#D9DEE7"; g.fillRect(wallX - 16, floorY - 150, 16, 150);
+    g.strokeStyle = C.ink; g.lineWidth = 3; g.beginPath(); g.moveTo(wallX, floorY - 150); g.lineTo(wallX, floorY); g.stroke();
+    g.strokeStyle = "#7A8494"; g.lineWidth = 1;
+    for (let y = floorY - 140; y < floorY; y += 14) { g.beginPath(); g.moveTo(wallX - 16, y + 10); g.lineTo(wallX, y - 2); g.stroke(); }
+    // floor
+    g.beginPath(); g.moveTo(wallX - 16, floorY); g.lineTo(w - 20, floorY); g.stroke();
+    // equilibrium marker
+    g.setLineDash([4, 4]); g.strokeStyle = "#9AA5B8"; g.beginPath(); g.moveTo(eqX, floorY - 130); g.lineTo(eqX, floorY + 14); g.stroke(); g.setLineDash([]);
+    g.fillStyle = C.muted; g.font = "12px " + getComputedStyle(document.body).fontFamily; g.textAlign = "center"; g.fillText("x = 0", eqX, floorY + 26);
+    // spring (upper)
+    const ySpring = floorY - massH + 26, yDamp = floorY - 26;
+    g.strokeStyle = C.ink; g.lineWidth = 2.5; g.lineJoin = "miter";
+    const n = 9, x0s = wallX, x1s = massX; const seg = (x1s - x0s - 30) / (n * 2);
+    g.beginPath(); g.moveTo(x0s, ySpring); g.lineTo(x0s + 15, ySpring);
+    for (let i = 0; i < n * 2; i++) { g.lineTo(x0s + 15 + seg * (i + 0.5), ySpring + (i % 2 ? 11 : -11)); }
+    g.lineTo(x1s - 15, ySpring); g.lineTo(x1s, ySpring); g.stroke();
+    // damper (lower): cylinder fixed to the wall, piston moves with the mass
+    const cylL = wallX + 60, cylR = wallX + 150, hh = 14;
+    g.strokeStyle = S.z < 1e-9 ? "#B8BFCB" : C.orange; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(wallX, yDamp); g.lineTo(cylL, yDamp); g.stroke();
+    g.beginPath(); g.moveTo(cylR, yDamp - hh); g.lineTo(cylL, yDamp - hh); g.lineTo(cylL, yDamp + hh); g.lineTo(cylR, yDamp + hh); g.stroke();
+    const pist = Math.max(cylL + 8, Math.min(cylR + 60, cylL + 45 + xd * scale));
+    g.lineWidth = 3.5; g.beginPath(); g.moveTo(pist, yDamp - hh + 3); g.lineTo(pist, yDamp + hh - 3); g.stroke();
+    g.lineWidth = 2.5; g.beginPath(); g.moveTo(pist, yDamp); g.lineTo(massX, yDamp); g.stroke();
+    // mass
+    g.fillStyle = "#EEF1F6"; g.strokeStyle = C.ink; g.lineWidth = 2.5;
+    g.fillRect(massX, floorY - massH, massW, massH); g.strokeRect(massX, floorY - massH, massW, massH);
+    g.fillStyle = C.ink; g.font = "italic 22px " + getComputedStyle(document.body).getPropertyValue("--serif"); g.textAlign = "center"; g.fillText("m", massX + massW / 2, floorY - massH / 2 + 8);
+    // displacement arrow
+    const ay = floorY - massH - 18;
+    g.strokeStyle = C.blue; g.fillStyle = C.blue; g.lineWidth = 2;
+    if (Math.abs(xd) * scale > 6) {
+      g.beginPath(); g.moveTo(eqX, ay); g.lineTo(massX, ay); g.stroke();
+      const dir = Math.sign(xd); g.beginPath(); g.moveTo(massX, ay); g.lineTo(massX - dir * 9, ay - 5); g.lineTo(massX - dir * 9, ay + 5); g.closePath(); g.fill();
+    }
+    g.font = "14px " + getComputedStyle(document.body).getPropertyValue("--serif"); g.textAlign = "left";
+    g.fillText("x(t) = " + xd.toFixed(3) + " m", w - 150, 24);
+    g.fillStyle = C.muted; g.font = "13px " + getComputedStyle(document.body).fontFamily; g.textAlign = "left";
+    g.fillText("k", wallX + 15 + (x1s - x0s - 30) / 2 - 4, ySpring - 18);
+    g.fillStyle = S.z < 1e-9 ? "#B8BFCB" : C.orange; g.fillText(S.z < 1e-9 ? "c = 0 (damper removed)" : "c", cylL + 25, yDamp + hh + 16);
+    // energy bar
+    const E0 = 0.5 * S.k * S.x0 * S.x0 + 0.5 * S.m * S.v0 * S.v0;
+    const E = 0.5 * S.k * xd * xd + 0.5 * S.m * v(t) * v(t);
+    const frac = E0 > 0 ? Math.max(0, Math.min(1, E / E0)) : 0;
+    $("ebar").style.width = (frac * 100).toFixed(1) + "%"; $("eval").textContent = (frac * 100).toFixed(0) + " %";
+  }
+
+  // ---------------- response plot ----------------
+  function drawPlot(t, d) {
+    const { g, w, h } = setupCanvas($("plot")); g.clearRect(0, 0, w, h);
+    const L = 52, R = 16, T = 26, B = 40; const pw = w - L - R, ph = h - T - B;
+    const N = 800; const pts = [], ref = [];
+    let ymax = 0.2;
+    for (let i = 0; i <= N; i++) { const tt = i * T_END / N; const xx = x(tt); pts.push(xx); ymax = Math.max(ymax, Math.abs(xx));
+      if (S.showRef) { const rr = xt(tt, 0, S.wn, S.x0, S.v0); ref.push(rr); ymax = Math.max(ymax, Math.abs(rr)); } }
+    if (S.showEnv && d.X) ymax = Math.max(ymax, d.X);
+    ymax *= 1.12;
+    const X = tt => L + tt / T_END * pw, Y = yy => T + ph / 2 - yy / ymax * ph / 2;
+    // grid & axes
+    g.strokeStyle = C.grid; g.lineWidth = 1;
+    for (let tt = 0; tt <= T_END; tt += 2) { g.beginPath(); g.moveTo(X(tt), T); g.lineTo(X(tt), T + ph); g.stroke(); }
+    const step = niceStep(ymax);
+    for (let yy = -Math.floor(ymax / step) * step; yy <= ymax; yy += step) { g.beginPath(); g.moveTo(L, Y(yy)); g.lineTo(L + pw, Y(yy)); g.stroke(); }
+    g.strokeStyle = "#999"; g.beginPath(); g.moveTo(L, Y(0)); g.lineTo(L + pw, Y(0)); g.stroke();
+    g.strokeStyle = "#444"; g.beginPath(); g.moveTo(L, T); g.lineTo(L, T + ph); g.lineTo(L + pw, T + ph); g.stroke();
+    g.fillStyle = "#444"; g.font = "12px " + getComputedStyle(document.body).fontFamily; g.textAlign = "center";
+    for (let tt = 0; tt <= T_END; tt += 2) g.fillText(tt, X(tt), T + ph + 16);
+    g.textAlign = "right";
+    for (let yy = -Math.floor(ymax / step) * step; yy <= ymax; yy += step) g.fillText((Math.abs(yy) < 1e-9 ? 0 : yy).toFixed(step < 1 ? 1 : 0), L - 6, Y(yy) + 4);
+    g.fillStyle = C.ink; g.font = "13px " + getComputedStyle(document.body).fontFamily; g.textAlign = "center"; g.fillText("time t (s)", L + pw / 2, h - 6);
+    g.save(); g.translate(14, T + ph / 2); g.rotate(-Math.PI / 2); g.font = "italic 14px " + getComputedStyle(document.body).getPropertyValue("--serif"); g.fillText("x(t)", 0, 0); g.restore();
+    // reference
+    if (S.showRef && S.z > 1e-9) { g.strokeStyle = "rgba(43,93,191,0.45)"; g.lineWidth = 1.5; g.setLineDash([5, 4]); g.beginPath();
+      ref.forEach((yy, i) => { const px = X(i * T_END / N), py = Y(yy); i ? g.lineTo(px, py) : g.moveTo(px, py); }); g.stroke(); g.setLineDash([]); }
+    // envelope
+    if (S.showEnv && d.X && S.z > 1e-9 && S.z < 1) { g.strokeStyle = C.orange; g.lineWidth = 1.5; g.setLineDash([6, 4]);
+      for (const sgn of [1, -1]) { g.beginPath(); for (let i = 0; i <= N; i++) { const tt = i * T_END / N; const py = Y(sgn * d.X * Math.exp(-S.z * S.wn * tt)); i ? g.lineTo(X(tt), py) : g.moveTo(X(tt), py); } g.stroke(); }
+      g.setLineDash([]); }
+    // response, drawn up to t (future part faint)
+    const col = { zero: C.blue, under: C.ink, crit: C.green, over: C.red }[d.r];
+    g.lineWidth = 1.5; g.strokeStyle = col; g.globalAlpha = 0.22; g.beginPath();
+    pts.forEach((yy, i) => { const px = X(i * T_END / N), py = Y(yy); i ? g.lineTo(px, py) : g.moveTo(px, py); }); g.stroke();
+    g.globalAlpha = 1; g.lineWidth = 3; g.beginPath(); const iEnd = Math.round(t / T_END * N);
+    for (let i = 0; i <= iEnd; i++) { const px = X(i * T_END / N), py = Y(pts[i]); i ? g.lineTo(px, py) : g.moveTo(px, py); } g.stroke();
+    // cursor
+    g.strokeStyle = "#9AA5B8"; g.lineWidth = 1; g.beginPath(); g.moveTo(X(t), T); g.lineTo(X(t), T + ph); g.stroke();
+    g.fillStyle = col; g.beginPath(); g.arc(X(t), Y(x(t)), 6, 0, Math.PI * 2); g.fill();
+    // legend
+    g.font = "12.5px " + getComputedStyle(document.body).fontFamily; g.textAlign = "left"; let lx = L + 10, ly = T + 14;
+    const item = (color, dash, label) => { g.strokeStyle = color; g.lineWidth = 2.5; g.setLineDash(dash); g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 24, ly); g.stroke(); g.setLineDash([]); g.fillStyle = "#444"; g.fillText(label, lx + 30, ly + 4); lx += 40 + g.measureText(label).width + 14; };
+    item(col, [], "x(t)  ζ = " + S.z.toFixed(2));
+    if (S.showEnv && S.z > 1e-9 && S.z < 1) item(C.orange, [6, 4], "envelope");
+    if (S.showRef && S.z > 1e-9) item("rgba(43,93,191,0.6)", [5, 4], "undamped reference");
+  }
+  function niceStep(ymax) { const raw = ymax / 3; const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+
+  // ---------------- roots in the complex plane ----------------
+  function drawRoots(d) {
+    const { g, w, h } = setupCanvas($("roots")); g.clearRect(0, 0, w, h);
+    const cx = w * 0.66, cy = h / 2, R = Math.min(w, h) * 0.34;
+    const wn = S.wn, sc = R / wn; // pixels per rad/s
+    g.strokeStyle = C.grid; g.lineWidth = 1; g.beginPath(); g.moveTo(8, cy); g.lineTo(w - 8, cy); g.stroke(); g.beginPath(); g.moveTo(cx, 8); g.lineTo(cx, h - 8); g.stroke();
+    g.strokeStyle = "#B8BFCB"; g.setLineDash([4, 4]); g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke(); g.setLineDash([]);
+    g.fillStyle = C.muted; g.font = "11px " + getComputedStyle(document.body).fontFamily; g.textAlign = "left"; g.fillText("Re", w - 22, cy - 5); g.fillText("Im", cx - 24, 16);
+    g.fillText("radius ωₙ", 10, h - 10);
+    const rr = d.r; const col = { zero: C.blue, under: C.ink, crit: C.green, over: C.red }[rr];
+    // dotted projections for underdamped
+    if (rr === "under") { g.strokeStyle = C.orange; g.setLineDash([2, 3]); g.beginPath(); g.moveTo(cx + d.lam[0][0] * sc, cy - d.lam[0][1] * sc); g.lineTo(cx + d.lam[0][0] * sc, cy + d.lam[0][1] * sc); g.stroke(); g.setLineDash([]); }
+    d.lam.forEach(([re, im]) => {
+      const px = Math.max(10, Math.min(w - 10, cx + re * sc)), py = cy - im * sc;
+      g.strokeStyle = col; g.lineWidth = 1.5; g.beginPath(); g.moveTo(cx, cy); g.lineTo(px, py); g.stroke();
+      g.fillStyle = col; g.beginPath(); g.arc(px, py, 6, 0, Math.PI * 2); g.fill();
+    });
+    if (rr === "over" && d.lam[1][0] * sc < -(cx - 10)) { g.fillStyle = C.red; g.font = "11px " + getComputedStyle(document.body).fontFamily; g.textAlign = "left"; g.fillText("λ₂ off-scale ←", 10, cy + 16); }
+  }
+
+  // ---------------- wiring ----------------
+  let dCache = derived();
+  function syncFromZW() { S.k = S.wn * S.wn * S.m; S.c = 2 * S.z * Math.sqrt(S.m * S.k); }
+  function syncFromMKC() { S.wn = Math.sqrt(S.k / S.m); S.z = S.c / (2 * Math.sqrt(S.m * S.k)); }
+  function setInputs() {
+    $("z").value = S.z; $("wn").value = S.wn; $("m").value = S.m; $("k").value = S.k; $("c").value = S.c; $("x0").value = S.x0; $("v0").value = S.v0;
+  }
+  function refresh() { dCache = updateText(); drawAnim(S.t); drawPlot(S.t, dCache); }
+
+  $("z").addEventListener("input", e => { S.z = +e.target.value; syncFromZW(); refresh(); });
+  $("wn").addEventListener("input", e => { S.wn = +e.target.value; syncFromZW(); refresh(); });
+  ["m", "k", "c"].forEach(id => $(id).addEventListener("input", e => { S[id] = +e.target.value; syncFromMKC(); refresh(); }));
+  $("x0").addEventListener("input", e => { S.x0 = +e.target.value; refresh(); });
+  $("v0").addEventListener("input", e => { S.v0 = +e.target.value; refresh(); });
+  $("showRef").addEventListener("change", e => { S.showRef = e.target.checked; refresh(); });
+  $("showEnv").addEventListener("change", e => { S.showEnv = e.target.checked; refresh(); });
+  $("modeZ").addEventListener("click", () => { S.mode = "zw"; $("modeZ").setAttribute("aria-pressed", "true"); $("modeMKC").setAttribute("aria-pressed", "false"); $("zw").hidden = false; $("mkc").hidden = true; setInputs(); refresh(); });
+  $("modeMKC").addEventListener("click", () => { S.mode = "mkc"; $("modeZ").setAttribute("aria-pressed", "false"); $("modeMKC").setAttribute("aria-pressed", "true"); $("zw").hidden = true; $("mkc").hidden = false; setInputs(); refresh(); });
+  document.querySelectorAll(".presets button[data-z]").forEach(b => b.addEventListener("click", () => { S.z = +b.dataset.z; syncFromZW(); setInputs(); S.t = 0; refresh(); }));
+  document.querySelectorAll(".presets button[data-ic]").forEach(b => b.addEventListener("click", () => { if (b.dataset.ic === "release") { S.x0 = 1; S.v0 = 0; } else { S.x0 = 0; S.v0 = 1; } setInputs(); S.t = 0; refresh(); }));
+  $("playBtn").addEventListener("click", () => { S.playing = !S.playing; $("playBtn").textContent = S.playing ? "Pause" : "Play"; if (S.playing && S.t >= T_END) S.t = 0; });
+  $("restartBtn").addEventListener("click", () => { S.t = 0; refresh(); });
+  $("speed").addEventListener("change", e => { S.speed = +e.target.value; });
+  $("tslider").addEventListener("input", e => { S.t = +e.target.value; S.playing = false; $("playBtn").textContent = "Play"; drawAnim(S.t); drawPlot(S.t, dCache); $("tval").textContent = S.t.toFixed(2) + " s"; });
+  window.addEventListener("resize", refresh);
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (S.playing) { S.t += dt * S.speed; if (S.t > T_END) S.t = 0; $("tslider").value = S.t; $("tval").textContent = S.t.toFixed(2) + " s"; drawAnim(S.t); drawPlot(S.t, dCache); }
+    requestAnimationFrame(loop);
+  }
+  $("playBtn").textContent = S.playing ? "Pause" : "Play";
+  syncFromZW(); setInputs(); refresh(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
