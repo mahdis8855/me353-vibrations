@@ -7,3 +7,7 @@ Drag the damping ratio ζ (or m, k, c), the natural frequency ωₙ, and the ini
 **Harmonic excitation of an undamped system** — https://mahdis8855.github.io/me353-vibrations/harmonic.html
 
 Drag the driving frequency ω toward ωₙ (or set m, k, F₀) and watch two tones turn into beats, then into resonance. The free part, the forced part, the beat or resonance envelope, and the amplitude ratio X/(F₀/k) against ω/ωₙ update together. Presets for Examples 2.1.1 and 2.1.2. Single HTML file, no dependencies; works offline.
+
+Scan to open on a phone:
+
+<img src="harmonic_qr.png" alt="QR code linking to the harmonic excitation widget" width="180">
