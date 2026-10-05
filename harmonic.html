@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Harmonic excitation of an undamped system — ME 353</title>
+<style>
+  :root {
+    --ink: #1B2A4A; --text: #222222; --muted: #6B7280; --rule: #D9DEE7;
+    --panel: #F3F5F9; --blue: #2B5DBF; --orange: #E07A1F; --green: #2E8B57; --red: #B5321E;
+    --tint-blue: #EEF3FC; --tint-orange: #FFF4E8; --tint-green: #EDF6F0; --tint-red: #FBEEEC;
+    --serif: Cambria, Georgia, "Times New Roman", serif;
+    --sans: Calibri, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: #fff; color: var(--text); font-family: var(--sans); font-size: 16px; }
+  body { padding: 22px 28px 18px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 28px; margin-bottom: 14px; }
+  h1 { font-family: var(--serif); font-size: 26px; font-weight: 700; color: var(--ink); margin: 0; }
+  header p { margin: 0; color: var(--muted); font-size: 15px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 16px; }
+  .presets span { color: var(--muted); font-size: 14px; align-self: center; margin-right: 2px; }
+  .presets button { font: inherit; font-size: 14px; padding: 6px 12px; border: 1px solid var(--rule); background: #fff;
+    color: var(--ink); border-radius: 6px; cursor: pointer; }
+  .presets button:hover { border-color: var(--ink); }
+  .presets button:focus-visible, input:focus-visible, .seg button:focus-visible, .play button:focus-visible, select:focus-visible
+    { outline: 3px solid var(--blue); outline-offset: 2px; }
+  .presets button.ic { border-style: dashed; }
+  .presets button.ex { border-color: var(--orange); color: var(--orange); }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, 0.95fr); gap: 22px; align-items: start; }
+  @media (max-width: 980px) { .grid { grid-template-columns: 1fr; } }
+
+  canvas { display: block; width: 100%; }
+  .stage { border: 1px solid var(--rule); border-radius: 8px; overflow: hidden; }
+  .stage canvas.anim { height: 230px; }
+  .stage canvas.plot { height: 380px; }
+  .force { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 8px 14px 10px; font-size: 14px; color: var(--muted); }
+  .force .bar { position: relative; height: 12px; background: var(--tint-orange); border-radius: 6px; overflow: hidden; }
+  .force .bar i { position: absolute; top: 0; height: 100%; background: var(--orange); }
+  .force .bar s { position: absolute; left: 50%; top: 0; width: 1px; height: 100%; background: #B8BFCB; }
+  .force b { color: var(--ink); font-variant-numeric: tabular-nums; min-width: 7em; text-align: right; }
+
+  .play { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 14px; border-top: 1px solid var(--rule); }
+  .play button { font: inherit; font-size: 15px; padding: 6px 14px; border-radius: 6px; border: 1px solid var(--ink); background: var(--ink); color: #fff; cursor: pointer; }
+  .play button.secondary { background: #fff; color: var(--ink); }
+  .play label { color: var(--muted); font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .play select { font: inherit; font-size: 14px; padding: 4px 6px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; }
+  .play .scrub { flex: 1 1 220px; display: flex; align-items: center; gap: 10px; }
+  .play .scrub input { flex: 1; }
+  .play .scrub b { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 5.2em; }
+
+  .controls { background: var(--panel); border-radius: 8px; padding: 16px 18px 14px; }
+  .seg { display: inline-flex; border: 1px solid var(--rule); border-radius: 6px; overflow: hidden; background: #fff; margin-bottom: 14px; }
+  .seg button { font: inherit; font-size: 14px; padding: 6px 12px; border: 0; background: #fff; color: var(--muted); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+  .slider { display: grid; grid-template-columns: 5.2em 1fr 5.4em; align-items: center; gap: 10px; margin: 6px 0 10px; }
+  .slider label { font-family: var(--serif); font-size: 19px; color: var(--ink); }
+  .slider label small { font-family: var(--sans); font-size: 12px; color: var(--muted); display: block; line-height: 1; }
+  .slider input[type=number] { font: inherit; font-size: 15px; width: 100%; padding: 3px 5px; border: 1px solid var(--rule); border-radius: 6px; background: #fff; color: var(--ink); text-align: right; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: var(--ink); height: 28px; margin: 0; }
+  #w-row input[type=range] { accent-color: var(--orange); }
+  .ratio { font-size: 13.5px; color: var(--muted); margin: -4px 0 10px 5.2em; padding-left: 10px; }
+  .ratio b { color: var(--orange); font-family: var(--serif); font-size: 16px; font-weight: 400; }
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-top: 8px; font-size: 14px; color: var(--text); }
+  .toggles label { display: flex; align-items: center; gap: 6px; }
+  .derived { margin-top: 10px; font-size: 13.5px; color: var(--muted); }
+
+  .readout { margin-top: 18px; }
+  .badge { display: inline-block; font-size: 15px; font-weight: 700; padding: 4px 12px; border-radius: 6px; margin-bottom: 8px; }
+  .badge.slow { background: var(--tint-green); color: var(--green); }
+  .badge.tones { background: var(--tint-blue); color: var(--blue); }
+  .badge.beats { background: var(--tint-orange); color: var(--orange); }
+  .badge.res { background: var(--tint-red); color: var(--red); }
+  .formula { font-family: var(--serif); font-size: 18px; color: var(--ink); line-height: 1.5; margin: 4px 0 10px; }
+  .formula sup, .formula sub { font-size: 70%; }
+  .formula .h { color: var(--blue); } .formula .p { color: var(--orange); } .formula .r { color: var(--red); }
+  .vals { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px; font-size: 15px; }
+  .vals div { display: flex; justify-content: space-between; border-bottom: 1px solid var(--rule); padding: 3px 0; }
+  .vals div span:first-child { font-family: var(--serif); color: var(--ink); }
+  .vals div span:last-child { font-variant-numeric: tabular-nums; }
+  .verdict { margin: 12px 0 0; font-size: 15px; line-height: 1.45; }
+  .map { display: grid; grid-template-columns: 220px 1fr; gap: 14px; align-items: center; margin-top: 14px; }
+  .map canvas { width: 220px; height: 180px; border: 1px solid var(--rule); border-radius: 8px; }
+  .map p { margin: 0; font-size: 14px; color: var(--muted); line-height: 1.45; }
+  .map p b { color: var(--ink); font-family: var(--serif); font-weight: 400; font-size: 15px; }
+  footer { margin-top: 16px; color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Harmonic excitation of an undamped system</h1>
+  <p>Drag ω toward ωₙ and watch two tones turn into beats, then into resonance.</p>
+</header>
+
+<div class="presets" role="group" aria-label="Presets">
+  <span>Driving frequency:</span>
+  <button data-r="0.15">slow push ω = 0.15 ωₙ</button>
+  <button data-r="0.5">two tones ω = 0.5 ωₙ</button>
+  <button data-r="1.2">beats ω = 1.2 ωₙ</button>
+  <button data-r="1">resonance ω = ωₙ</button>
+  <button data-r="2.5">fast push ω = 2.5 ωₙ</button>
+  <span style="margin-left:10px">Start:</span>
+  <button class="ic" data-ic="rest">from rest</button>
+  <button class="ic" data-ic="release">release from x₀ = 1</button>
+  <button class="ic" data-ic="kick">kick, v₀ = 1</button>
+  <span style="margin-left:10px">Book:</span>
+  <button class="ex" data-ex="211">Example 2.1.1</button>
+  <button class="ex" data-ex="212">Example 2.1.2</button>
+</div>
+
+<div class="grid">
+  <section class="stage" aria-label="Animation and response plot">
+    <canvas class="anim" id="anim"></canvas>
+    <div class="force">
+      <span>Force right now, F(t)/F₀</span>
+      <div class="bar"><s></s><i id="fbar"></i></div>
+      <b id="fval">+1.00</b>
+    </div>
+    <canvas class="plot" id="plot"></canvas>
+    <div class="play">
+      <button id="playBtn">Pause</button>
+      <button id="restartBtn" class="secondary">Restart</button>
+      <label>Speed <select id="speed"><option value="0.1">0.1×</option><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select></label>
+      <label>Window <select id="win"><option value="0" selected>auto</option><option value="5">5 s</option><option value="10">10 s</option><option value="20">20 s</option><option value="40">40 s</option><option value="60">60 s</option><option value="90">90 s</option></select></label>
+      <div class="scrub"><label for="tslider">t</label><input type="range" id="tslider" min="0" max="20" step="0.01" value="0"><b id="tval">0.00 s</b></div>
+    </div>
+  </section>
+
+  <aside class="controls" aria-label="Parameters">
+    <div class="seg" role="group" aria-label="Which parameters to set">
+      <button id="modeW" aria-pressed="true">Set ωₙ, ω, f₀</button>
+      <button id="modeMK" aria-pressed="false">Set m, k, F₀, ω</button>
+    </div>
+
+    <div id="ww">
+      <div class="slider"><label for="wn">ω<sub>n</sub> <small>rad/s</small></label><input type="range" id="wn" min="0.2" max="20" step="0.05" value="1"><input type="number" id="wno" step="any" value="1.00"></div>
+    </div>
+    <div id="mk" hidden>
+      <div class="slider"><label for="m">m <small>kg</small></label><input type="range" id="m" min="0.1" max="20" step="0.1" value="1"><input type="number" id="mo" step="any" value="1.0"></div>
+      <div class="slider"><label for="k">k <small>N/m</small></label><input type="range" id="k" min="0.1" max="100" step="0.1" value="1"><input type="number" id="ko" step="any" value="1.0"></div>
+      <div class="slider"><label for="F0">F<sub>0</sub> <small>N</small></label><input type="range" id="F0" min="0" max="30" step="0.1" value="1"><input type="number" id="F0o" step="any" value="1.0"></div>
+    </div>
+    <div class="slider" id="w-row"><label for="w">ω <small>rad/s, driving</small></label><input type="range" id="w" min="0" max="40" step="0.05" value="0.5"><input type="number" id="wo" step="any" value="0.50"></div>
+    <div class="ratio">frequency ratio ω/ωₙ = <b id="ratio">0.50</b></div>
+    <div id="f0-row">
+      <div class="slider"><label for="f0">f<sub>0</sub> <small>N/kg = F₀/m</small></label><input type="range" id="f0" min="0" max="5" step="0.05" value="1"><input type="number" id="f0o" step="any" value="1.00"></div>
+    </div>
+    <div class="slider"><label for="x0">x<sub>0</sub> <small>m</small></label><input type="range" id="x0" min="-1.5" max="1.5" step="0.05" value="0"><input type="number" id="x0o" step="any" value="0.00"></div>
+    <div class="slider"><label for="v0">v<sub>0</sub> <small>m/s</small></label><input type="range" id="v0" min="-3" max="3" step="0.05" value="0"><input type="number" id="v0o" step="any" value="0.00"></div>
+
+    <div class="toggles">
+      <label><input type="checkbox" id="showParts" checked> show the free part and the forced part separately</label>
+      <label><input type="checkbox" id="showEnv" checked> show the envelope (beats or resonance)</label>
+    </div>
+    <div class="derived" id="derived"></div>
+
+    <div class="readout">
+      <span class="badge tones" id="badge">Two tones</span>
+      <div class="formula" id="formula"></div>
+      <div class="vals" id="vals"></div>
+      <p class="verdict" id="verdict"></p>
+      <div class="map">
+        <canvas id="map" aria-label="Amplitude of the forced part against the frequency ratio"></canvas>
+        <p id="mapText"></p>
+      </div>
+    </div>
+  </aside>
+</div>
+<footer>ME 353 Engineering Vibrations · Lecture 7 · x(t) solves ẍ + ωₙ² x = f₀ cos ωt with x(0) = x₀, ẋ(0) = v₀. No damper, so nothing fades. The animation is scaled to fit the window.</footer>
+
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const C = { ink: "#1B2A4A", blue: "#2B5DBF", orange: "#E07A1F", green: "#2E8B57", red: "#B5321E", muted: "#6B7280", rule: "#D9DEE7", grid: "#E9EDF3" };
+
+  // ---------------- state ----------------
+  const S = { wn: 1, w: 0.5, f0: 1, m: 1, k: 1, F0: 1, x0: 0, v0: 0, mode: "ww", t: 0, playing: true, speed: 1, win: 0, showParts: true, showEnv: true };
+  const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (reduced) S.playing = false;
+  let T_END = 20;
+
+  // ---------------- physics ----------------
+  const atRes = () => Math.abs(S.wn * S.wn - S.w * S.w) < 1e-6 * S.wn * S.wn;
+  function X() { return S.f0 / (S.wn * S.wn - S.w * S.w); }
+  function parts(t) {
+    const wn = S.wn, w = S.w, x0 = S.x0, v0 = S.v0, f0 = S.f0;
+    if (atRes()) {
+      const xh = v0 / w * Math.sin(w * t) + x0 * Math.cos(w * t);
+      const xp = f0 / (2 * w) * t * Math.sin(w * t);
+      return { xh, xp, x: xh + xp };
+    }
+    const Xv = X();
+    const xh = v0 / wn * Math.sin(wn * t) + (x0 - Xv) * Math.cos(wn * t);
+    const xp = Xv * Math.cos(w * t);
+    return { xh, xp, x: xh + xp };
+  }
+  const x = t => parts(t).x;
+  function vel(t) {
+    const wn = S.wn, w = S.w, x0 = S.x0, v0 = S.v0, f0 = S.f0;
+    if (atRes()) return v0 * Math.cos(w * t) - x0 * w * Math.sin(w * t) + f0 / (2 * w) * (Math.sin(w * t) + w * t * Math.cos(w * t));
+    const Xv = X();
+    return v0 * Math.cos(wn * t) - wn * (x0 - Xv) * Math.sin(wn * t) - w * Xv * Math.sin(w * t);
+  }
+  function regime() {
+    if (atRes()) return "res";
+    const r = S.w / S.wn;
+    if (r < 0.3) return "slow";
+    if (r > 0.8 && r < 1.25) return "beats";
+    return "tones";
+  }
+  function autoWindow() {
+    const wn = S.wn, w = S.w;
+    const slow = Math.min(wn, w > 0.05 ? w : wn);
+    let T = 4 * 2 * Math.PI / slow;
+    const db = Math.abs(wn - w);
+    if (db > 1e-9 && db < 0.5 * wn) T = Math.max(T, 2.2 * 2 * Math.PI / db);
+    if (atRes()) T = Math.max(T, 12 * 2 * Math.PI / wn);
+    return Math.min(90, Math.max(2, T));
+  }
+  function derived() {
+    const d = { r: regime(), ratio: S.w / S.wn, res: atRes() };
+    d.Xp = d.res ? NaN : X();
+    d.A1 = d.res ? S.v0 / S.w : S.v0 / S.wn;
+    d.A2 = d.res ? S.x0 : S.x0 - d.Xp;
+    d.xstat = S.f0 / (S.wn * S.wn);
+    d.wbeat = Math.abs(S.wn - S.w); d.Tbeat = d.wbeat > 1e-9 ? 2 * Math.PI / d.wbeat : Infinity;
+    d.wfast = (S.wn + S.w) / 2;
+    d.fromRest = Math.abs(S.x0) < 1e-9 && Math.abs(S.v0) < 1e-9;
+    let peak = 0; const N = 2000;
+    for (let i = 0; i <= N; i++) peak = Math.max(peak, Math.abs(x(i * T_END / N)));
+    d.peak = peak;
+    return d;
+  }
+
+  // ---------------- formatting ----------------
+  const f2 = n => n.toFixed(2), f3 = n => n.toFixed(3);
+  const fm = n => { const a = Math.abs(n); if (a < 1e-12) return "0"; return a >= 100 ? n.toFixed(1) : a >= 10 ? n.toFixed(2) : a >= 0.01 ? n.toFixed(3) : n.toExponential(2); };
+  const fin = n => String(+n.toFixed(3));
+  const sg = n => (n < 0 ? "− " : "+ ") + fm(Math.abs(n));
+
+  function updateText() {
+    const d = derived(), r = d.r;
+    $("wno").value = fin(S.wn); $("wo").value = fin(S.w); $("f0o").value = fin(S.f0);
+    $("mo").value = fin(S.m); $("ko").value = fin(S.k); $("F0o").value = fin(S.F0);
+    $("x0o").value = fin(S.x0); $("v0o").value = fin(S.v0); $("ratio").textContent = f2(d.ratio);
+    $("derived").innerHTML = S.mode === "ww"
+      ? `Equivalent with m = 1 kg: k = ${f2(S.k)} N/m, F<sub>0</sub> = ${f2(S.F0)} N. Static deflection F<sub>0</sub>/k = f<sub>0</sub>/ω<sub>n</sub>² = ${fm(d.xstat)} m.`
+      : `ω<sub>n</sub> = √(k/m) = ${f2(S.wn)} rad/s, f<sub>0</sub> = F<sub>0</sub>/m = ${f2(S.f0)} N/kg. Static deflection F<sub>0</sub>/k = ${fm(d.xstat)} m.`;
+
+    const badge = $("badge");
+    badge.className = "badge " + r;
+    badge.textContent = { slow: "Slow push (ω well below ωₙ)", tones: "Two tones (ω away from ωₙ)", beats: "Beats (ω close to ωₙ)", res: "Resonance (ω = ωₙ)" }[r];
+
+    let formula, vals, verdict;
+    if (d.res) {
+      formula = `x(t) = <span class="h">${fm(d.A1)} sin(${f2(S.w)}t) ${sg(d.A2)} cos(${f2(S.w)}t)</span> <span class="r">+ ${fm(S.f0 / (2 * S.w))} · t · sin(${f2(S.w)}t)</span>`;
+      vals = [["ω<sub>n</sub> = ω", f2(S.wn) + " rad/s"], ["ratio ω/ω<sub>n</sub>", "1.00"], ["f<sub>0</sub>", f2(S.f0) + " N/kg"], ["X", "undefined"],
+              ["growth rate f<sub>0</sub>/(2ω)", fm(S.f0 / (2 * S.w)) + " m/s"], ["largest |x| in window", fm(d.peak) + " m"]];
+      verdict = `The driving frequency equals the natural frequency. The guess X cos ωt fails, so the forced part becomes (f₀/2ω) t sin ωt: an oscillation whose amplitude grows in a straight line and never stops. Every push lands in step with the velocity, so each cycle adds energy. A real spring would yield or break; damping (next lecture) keeps this finite but large.`;
+    } else {
+      formula = `x(t) = <span class="h">${fm(d.A1)} sin(${f2(S.wn)}t) ${sg(d.A2)} cos(${f2(S.wn)}t)</span> <span class="p">${sg(d.Xp)} cos(${f2(S.w)}t)</span>`;
+      vals = [["ω<sub>n</sub>", f2(S.wn) + " rad/s"], ["ω", f2(S.w) + " rad/s"], ["ratio ω/ω<sub>n</sub>", f2(d.ratio)], ["f<sub>0</sub>", f2(S.f0) + " N/kg"],
+              ["X = f<sub>0</sub>/(ω<sub>n</sub>² − ω²)", fm(d.Xp) + " m"], ["A<sub>2</sub> = x<sub>0</sub> − X", fm(d.A2) + " m"],
+              ["A<sub>1</sub> = v<sub>0</sub>/ω<sub>n</sub>", fm(d.A1) + " m"], ["largest |x| in window", fm(d.peak) + " m"]];
+      if (r === "beats") vals.push(["beat frequency |ω<sub>n</sub> − ω|", f3(d.wbeat) + " rad/s"], ["beat period 2π/|ω<sub>n</sub> − ω|", f2(d.Tbeat) + " s"]);
+      if (r === "slow") verdict = `ω is far below ωₙ. The force changes so slowly that the spring just follows it: X ≈ f₀/ωₙ² = F₀/k, the static deflection. The free part at ωₙ rides on top of that slow motion.`;
+      else if (r === "tones") verdict = d.ratio < 1
+        ? `Two frequencies at once: the system's own ωₙ (blue) and the driver's ω (orange). X is positive, so the forced part moves in step with the force. With no damper the free part never fades, so the total never becomes a clean sine wave.`
+        : `Two frequencies at once: the system's own ωₙ (blue) and the driver's ω (orange). X is negative, so the forced part moves against the force: the mass is too heavy to keep up. With no damper the free part never fades.`;
+      else verdict = d.fromRest
+        ? `ω is close to ωₙ. From rest, x(t) = (2f₀/(ωₙ² − ω²)) sin((ωₙ − ω)t/2) sin((ωₙ + ω)t/2): a fast swing at ${f2(d.wfast)} rad/s inside a slow envelope. The envelope repeats every ${f2(d.Tbeat)} s. That is a beat. Push ω closer to ωₙ and the beats get longer and taller.`
+        : `ω is close to ωₙ, so the two tones drift in and out of step and the motion swells and shrinks: a beat with period ${f2(d.Tbeat)} s. Set x₀ = v₀ = 0 to see the clean beats formula (2.13).`;
+    }
+    $("formula").innerHTML = formula;
+    $("vals").innerHTML = vals.map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join("");
+    $("verdict").textContent = verdict;
+    $("mapText").innerHTML = d.res
+      ? `<b>X</b> has no finite value at r = 1. The marker sits on the vertical line where the amplitude curve blows up.`
+      : `Amplitude of the forced part, <b>X</b>, divided by the static deflection F₀/k, against r = ω/ωₙ. Here <b>X/(F₀/k)</b> = ${fm(1 / (1 - d.ratio * d.ratio))}. Left of r = 1 the mass moves with the force; right of it, against the force.`;
+    drawMap(d);
+    return d;
+  }
+
+  // ---------------- canvas helpers ----------------
+  function setupCanvas(cv) {
+    const dpr = window.devicePixelRatio || 1; const rect = cv.getBoundingClientRect();
+    if (cv.width !== Math.round(rect.width * dpr) || cv.height !== Math.round(rect.height * dpr)) { cv.width = Math.round(rect.width * dpr); cv.height = Math.round(rect.height * dpr); }
+    const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0); return { g, w: rect.width, h: rect.height };
+  }
+  const sans = () => getComputedStyle(document.body).fontFamily;
+  const serif = () => getComputedStyle(document.body).getPropertyValue("--serif");
+
+  // ---------------- animation of the mass and spring with the force ----------------
+  function drawAnim(t, d) {
+    const { g, w, h } = setupCanvas($("anim")); g.clearRect(0, 0, w, h);
+    const wallX = 40, eqX = w * 0.5, floorY = h - 34, massW = 96, massH = 96;
+    const room = Math.min(eqX - wallX - 110, w - eqX - massW - 150);
+    const scale = d.peak > 1e-9 ? Math.min(room / d.peak, 400) : 0;   // px per metre, scaled to fit
+    const xd = x(t); const massX = eqX + xd * scale;
+    // wall
+    g.fillStyle = "#D9DEE7"; g.fillRect(wallX - 16, floorY - 150, 16, 150);
+    g.strokeStyle = C.ink; g.lineWidth = 3; g.beginPath(); g.moveTo(wallX, floorY - 150); g.lineTo(wallX, floorY); g.stroke();
+    g.strokeStyle = "#7A8494"; g.lineWidth = 1;
+    for (let y = floorY - 140; y < floorY; y += 14) { g.beginPath(); g.moveTo(wallX - 16, y + 10); g.lineTo(wallX, y - 2); g.stroke(); }
+    g.beginPath(); g.moveTo(wallX - 16, floorY); g.lineTo(w - 20, floorY); g.stroke();
+    // equilibrium marker
+    g.setLineDash([4, 4]); g.strokeStyle = "#9AA5B8"; g.beginPath(); g.moveTo(eqX, floorY - 130); g.lineTo(eqX, floorY + 14); g.stroke(); g.setLineDash([]);
+    g.fillStyle = C.muted; g.font = "12px " + sans(); g.textAlign = "center"; g.fillText("x = 0", eqX, floorY + 26);
+    // spring
+    const ySpring = floorY - massH / 2;
+    g.strokeStyle = C.ink; g.lineWidth = 2.5; g.lineJoin = "miter";
+    const n = 9, x0s = wallX, x1s = massX; const seg = (x1s - x0s - 30) / (n * 2);
+    g.beginPath(); g.moveTo(x0s, ySpring); g.lineTo(x0s + 15, ySpring);
+    for (let i = 0; i < n * 2; i++) { g.lineTo(x0s + 15 + seg * (i + 0.5), ySpring + (i % 2 ? 11 : -11)); }
+    g.lineTo(x1s - 15, ySpring); g.lineTo(x1s, ySpring); g.stroke();
+    g.fillStyle = C.muted; g.font = "13px " + sans(); g.textAlign = "left";
+    g.fillText("k", wallX + 15 + (x1s - x0s - 30) / 2 - 4, ySpring - 18);
+    g.fillText("no damper, c = 0", wallX + 2, floorY - massH - 22);
+    // mass
+    g.fillStyle = "#EEF1F6"; g.strokeStyle = C.ink; g.lineWidth = 2.5;
+    g.fillRect(massX, floorY - massH, massW, massH); g.strokeRect(massX, floorY - massH, massW, massH);
+    g.fillStyle = C.ink; g.font = "italic 22px " + serif(); g.textAlign = "center"; g.fillText("m", massX + massW / 2, floorY - massH / 2 + 8);
+    // force arrow F0 cos(wt), drawn on the mass
+    const Ft = Math.cos(S.w * t); const len = Ft * 70;
+    const fy = floorY - massH / 2;
+    g.strokeStyle = C.orange; g.fillStyle = C.orange; g.lineWidth = 3.5;
+    if (S.f0 > 1e-9 && Math.abs(len) > 4) {
+      const ax0 = len > 0 ? massX + massW : massX, ax1 = ax0 + len; const dir = Math.sign(len);
+      g.beginPath(); g.moveTo(ax0, fy); g.lineTo(ax1 - dir * 8, fy); g.stroke();
+      g.beginPath(); g.moveTo(ax1, fy); g.lineTo(ax1 - dir * 12, fy - 7); g.lineTo(ax1 - dir * 12, fy + 7); g.closePath(); g.fill();
+    }
+    g.font = "14px " + serif(); g.textAlign = "left";
+    g.fillText("F(t) = F₀ cos ωt", w - 160, 24);
+    // displacement arrow
+    const ay = floorY - massH - 18;
+    g.strokeStyle = C.blue; g.fillStyle = C.blue; g.lineWidth = 2;
+    if (Math.abs(xd) * scale > 6) {
+      g.beginPath(); g.moveTo(eqX, ay); g.lineTo(massX, ay); g.stroke();
+      const dir = Math.sign(xd); g.beginPath(); g.moveTo(massX, ay); g.lineTo(massX - dir * 9, ay - 5); g.lineTo(massX - dir * 9, ay + 5); g.closePath(); g.fill();
+    }
+    g.font = "14px " + serif(); g.textAlign = "left";
+    g.fillText("x(t) = " + fm(xd) + " m", w - 160, 44);
+    // force bar
+    const bar = $("fbar"); const half = Math.abs(Ft) * 50;
+    bar.style.width = half + "%"; bar.style.left = (Ft >= 0 ? 50 : 50 - half) + "%";
+    $("fval").textContent = (Ft >= 0 ? "+" : "−") + Math.abs(Ft).toFixed(2) + "  (" + fm(S.F0 * Ft) + " N)";
+  }
+
+  // ---------------- response plot ----------------
+  function drawPlot(t, d) {
+    const { g, w, h } = setupCanvas($("plot")); g.clearRect(0, 0, w, h);
+    const L = 56, R = 16, T = 26, B = 40; const pw = w - L - R, ph = h - T - B;
+    const N = 1200; const tot = [], fre = [], frc = [];
+    let ymax = 1e-9;
+    for (let i = 0; i <= N; i++) { const p = parts(i * T_END / N); tot.push(p.x); fre.push(p.xh); frc.push(p.xp);
+      ymax = Math.max(ymax, Math.abs(p.x)); if (S.showParts) ymax = Math.max(ymax, Math.abs(p.xh), Math.abs(p.xp)); }
+    ymax *= 1.12;
+    const Xp = tt => L + tt / T_END * pw, Y = yy => T + ph / 2 - yy / ymax * ph / 2;
+    // grid and axes
+    const tstep = niceStep(T_END * 0.6);
+    g.strokeStyle = C.grid; g.lineWidth = 1;
+    for (let tt = 0; tt <= T_END + 1e-9; tt += tstep) { g.beginPath(); g.moveTo(Xp(tt), T); g.lineTo(Xp(tt), T + ph); g.stroke(); }
+    const step = niceStep(ymax);
+    for (let yy = -Math.floor(ymax / step) * step; yy <= ymax; yy += step) { g.beginPath(); g.moveTo(L, Y(yy)); g.lineTo(L + pw, Y(yy)); g.stroke(); }
+    g.strokeStyle = "#999"; g.beginPath(); g.moveTo(L, Y(0)); g.lineTo(L + pw, Y(0)); g.stroke();
+    g.strokeStyle = "#444"; g.beginPath(); g.moveTo(L, T); g.lineTo(L, T + ph); g.lineTo(L + pw, T + ph); g.stroke();
+    g.fillStyle = "#444"; g.font = "12px " + sans(); g.textAlign = "center";
+    for (let tt = 0; tt <= T_END + 1e-9; tt += tstep) g.fillText(+tt.toFixed(2), Xp(tt), T + ph + 16);
+    g.textAlign = "right";
+    for (let yy = -Math.floor(ymax / step) * step; yy <= ymax; yy += step) g.fillText(Math.abs(yy) < 1e-12 ? "0" : fmTick(yy, step), L - 6, Y(yy) + 4);
+    g.fillStyle = C.ink; g.font = "13px " + sans(); g.textAlign = "center"; g.fillText("time t (s)", L + pw / 2, h - 6);
+    g.save(); g.translate(14, T + ph / 2); g.rotate(-Math.PI / 2); g.font = "italic 14px " + serif(); g.fillText("x(t)", 0, 0); g.restore();
+    const poly = (arr, color, width, dash, alpha, upto) => {
+      g.strokeStyle = color; g.lineWidth = width; g.setLineDash(dash); g.globalAlpha = alpha; g.beginPath();
+      const iEnd = upto == null ? N : Math.round(upto / T_END * N);
+      for (let i = 0; i <= iEnd; i++) { const px = Xp(i * T_END / N), py = Y(arr[i]); i ? g.lineTo(px, py) : g.moveTo(px, py); }
+      g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+    };
+    // the two parts
+    if (S.showParts) { poly(fre, C.blue, 1.4, [5, 4], 0.7, null); poly(frc, C.orange, 1.4, [5, 4], 0.7, null); }
+    // envelopes
+    let envLabel = null;
+    if (S.showEnv) {
+      if (d.res) {
+        const env = []; for (let i = 0; i <= N; i++) env.push(S.f0 / (2 * S.w) * (i * T_END / N) + Math.hypot(S.x0, S.v0 / S.w));
+        poly(env, C.red, 1.5, [6, 4], 1, null); poly(env.map(v => -v), C.red, 1.5, [6, 4], 1, null); envLabel = "growth line ± f₀t/(2ωₙ)";
+      } else if (d.fromRest && d.r === "beats") {
+        const amp = 2 * S.f0 / (S.wn * S.wn - S.w * S.w); const env = [];
+        for (let i = 0; i <= N; i++) env.push(Math.abs(amp * Math.sin((S.wn - S.w) / 2 * (i * T_END / N))));
+        poly(env, C.orange, 1.5, [6, 4], 1, null); poly(env.map(v => -v), C.orange, 1.5, [6, 4], 1, null); envLabel = "beat envelope";
+      }
+    }
+    // total response, faint for the future, strong up to t
+    const col = { slow: C.green, tones: C.ink, beats: C.ink, res: C.red }[d.r];
+    poly(tot, col, 1.5, [], 0.22, null); poly(tot, col, 3, [], 1, t);
+    // cursor
+    g.strokeStyle = "#9AA5B8"; g.lineWidth = 1; g.beginPath(); g.moveTo(Xp(t), T); g.lineTo(Xp(t), T + ph); g.stroke();
+    g.fillStyle = col; g.beginPath(); g.arc(Xp(t), Y(x(t)), 6, 0, Math.PI * 2); g.fill();
+    // legend
+    g.font = "12.5px " + sans(); g.textAlign = "left"; let lx = L + 10, ly = T + 14;
+    const item = (color, dash, label) => { g.strokeStyle = color; g.lineWidth = 2.5; g.setLineDash(dash); g.beginPath(); g.moveTo(lx, ly); g.lineTo(lx + 24, ly); g.stroke(); g.setLineDash([]); g.fillStyle = "#444"; g.fillText(label, lx + 30, ly + 4); lx += 40 + g.measureText(label).width + 14; };
+    item(col, [], "x(t) total");
+    if (S.showParts) { item(C.blue, [5, 4], "free part at ωₙ"); item(C.orange, [5, 4], "forced part at ω"); }
+    if (envLabel) item(d.res ? C.red : C.orange, [6, 4], envLabel);
+  }
+  function niceStep(span) { const raw = span / 3; const p = Math.pow(10, Math.floor(Math.log10(raw))); const m = raw / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; }
+  function fmTick(v, step) { const dec = Math.max(0, -Math.floor(Math.log10(step))); return v.toFixed(dec); }
+
+  // ---------------- amplitude map: X/(F0/k) against r ----------------
+  function drawMap(d) {
+    const { g, w, h } = setupCanvas($("map")); g.clearRect(0, 0, w, h);
+    const L = 30, R = 10, T = 12, B = 26; const pw = w - L - R, ph = h - T - B; const rmax = 2.6, ymax = 4;
+    const Xr = r => L + r / rmax * pw, Yv = v => T + ph / 2 - v / ymax * ph / 2;
+    g.fillStyle = "#EEF3FC"; g.fillRect(L, T, Xr(1) - L, ph); g.fillStyle = "#FFF4E8"; g.fillRect(Xr(1), T, L + pw - Xr(1), ph);
+    g.strokeStyle = C.grid; g.lineWidth = 1; [-2, 2].forEach(v => { g.beginPath(); g.moveTo(L, Yv(v)); g.lineTo(L + pw, Yv(v)); g.stroke(); });
+    g.strokeStyle = "#999"; g.beginPath(); g.moveTo(L, Yv(0)); g.lineTo(L + pw, Yv(0)); g.stroke();
+    g.strokeStyle = C.red; g.setLineDash([3, 3]); g.beginPath(); g.moveTo(Xr(1), T); g.lineTo(Xr(1), T + ph); g.stroke(); g.setLineDash([]);
+    g.strokeStyle = C.ink; g.lineWidth = 2; g.beginPath(); let started = false;
+    for (let i = 0; i <= 400; i++) { const r = i / 400 * rmax; let v = 1 / (1 - r * r); if (Math.abs(1 - r * r) < 0.02) { started = false; continue; }
+      v = Math.max(-ymax * 1.2, Math.min(ymax * 1.2, v)); const px = Xr(r), py = Yv(v); if (!started) { g.moveTo(px, py); started = true; } else g.lineTo(px, py); }
+    g.stroke();
+    g.fillStyle = C.muted; g.font = "11px " + sans(); g.textAlign = "center";
+    [0, 1, 2].forEach(r => g.fillText(r, Xr(r), h - 10)); g.fillText("r = ω/ωₙ", L + pw / 2, h - 0);
+    g.textAlign = "right"; [-2, 0, 2].forEach(v => g.fillText(v, L - 4, Yv(v) + 4));
+    g.save(); g.translate(9, T + ph / 2); g.rotate(-Math.PI / 2); g.textAlign = "center"; g.fillText("X / (F₀/k)", 0, 0); g.restore();
+    const r = d.ratio, v = d.res ? 0 : Math.max(-ymax * 1.05, Math.min(ymax * 1.05, 1 / (1 - r * r)));
+    const col = { slow: C.green, tones: C.ink, beats: C.orange, res: C.red }[d.r];
+    g.fillStyle = col; g.beginPath(); g.arc(Math.min(L + pw, Xr(r)), Yv(v), 6, 0, Math.PI * 2); g.fill();
+    if (r > rmax) { g.fillStyle = C.muted; g.textAlign = "right"; g.fillText("r off-scale →", L + pw - 4, T + 12); }
+  }
+
+  // ---------------- wiring ----------------
+  let dCache;
+  function syncFromWW() { S.k = S.wn * S.wn * S.m; S.F0 = S.f0 * S.m; }
+  function syncFromMK() { S.wn = Math.sqrt(S.k / S.m); S.f0 = S.F0 / S.m; }
+  function growRange(id, val) { const el = $(id); if (val > +el.max) el.max = Math.ceil(val * 1.2); if (val < +el.min) el.min = Math.floor(val * 1.2); }
+  function setInputs() {
+    [["wn", S.wn], ["w", S.w], ["f0", S.f0], ["m", S.m], ["k", S.k], ["F0", S.F0], ["x0", S.x0], ["v0", S.v0]].forEach(([id, v]) => { growRange(id, v); $(id).value = v; });
+  }
+  function setWindow() { T_END = S.win > 0 ? S.win : autoWindow(); $("tslider").max = T_END; if (S.t > T_END) S.t = 0; }
+  function refresh() { setWindow(); dCache = updateText(); drawAnim(S.t, dCache); drawPlot(S.t, dCache); $("tslider").value = S.t; $("tval").textContent = S.t.toFixed(2) + " s"; }
+
+  function bind(id, outId, onSet) {
+    $(id).addEventListener("input", e => { onSet(+e.target.value); refresh(); });
+    $(outId).addEventListener("change", e => { const v = +e.target.value; if (!isFinite(v)) return; growRange(id, v); $(id).value = v; onSet(v); refresh(); });
+  }
+  bind("wn", "wno", v => { S.wn = Math.max(0.05, v); syncFromWW(); });
+  bind("w", "wo", v => { S.w = Math.max(0, v); });
+  bind("f0", "f0o", v => { S.f0 = Math.max(0, v); syncFromWW(); });
+  bind("m", "mo", v => { S.m = Math.max(0.01, v); syncFromMK(); });
+  bind("k", "ko", v => { S.k = Math.max(0.01, v); syncFromMK(); });
+  bind("F0", "F0o", v => { S.F0 = Math.max(0, v); syncFromMK(); });
+  bind("x0", "x0o", v => { S.x0 = v; });
+  bind("v0", "v0o", v => { S.v0 = v; });
+  $("showParts").addEventListener("change", e => { S.showParts = e.target.checked; refresh(); });
+  $("showEnv").addEventListener("change", e => { S.showEnv = e.target.checked; refresh(); });
+  $("modeW").addEventListener("click", () => { S.mode = "ww"; $("modeW").setAttribute("aria-pressed", "true"); $("modeMK").setAttribute("aria-pressed", "false"); $("ww").hidden = false; $("f0-row").hidden = false; $("mk").hidden = true; setInputs(); refresh(); });
+  $("modeMK").addEventListener("click", () => { S.mode = "mk"; $("modeW").setAttribute("aria-pressed", "false"); $("modeMK").setAttribute("aria-pressed", "true"); $("ww").hidden = true; $("f0-row").hidden = true; $("mk").hidden = false; setInputs(); refresh(); });
+  document.querySelectorAll(".presets button[data-r]").forEach(b => b.addEventListener("click", () => { S.w = +(S.wn * +b.dataset.r).toFixed(4); setInputs(); S.t = 0; refresh(); }));
+  document.querySelectorAll(".presets button[data-ic]").forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.ic === "rest") { S.x0 = 0; S.v0 = 0; } else if (b.dataset.ic === "release") { S.x0 = 1; S.v0 = 0; } else { S.x0 = 0; S.v0 = 1; }
+    setInputs(); S.t = 0; refresh(); }));
+  document.querySelectorAll(".presets button[data-ex]").forEach(b => b.addEventListener("click", () => {
+    if (b.dataset.ex === "211") { S.m = 10; S.k = 1000; S.F0 = 23; S.w = 20; S.x0 = 0; S.v0 = 0.2; }
+    else { S.m = 0.405; S.k = 2000; S.F0 = 20; S.w = +(20 * Math.PI).toFixed(4); S.x0 = 0; S.v0 = 0; }
+    syncFromMK(); $("modeMK").click(); S.t = 0; refresh(); }));
+  $("playBtn").addEventListener("click", () => { S.playing = !S.playing; $("playBtn").textContent = S.playing ? "Pause" : "Play"; if (S.playing && S.t >= T_END) S.t = 0; });
+  $("restartBtn").addEventListener("click", () => { S.t = 0; refresh(); });
+  $("speed").addEventListener("change", e => { S.speed = +e.target.value; });
+  $("win").addEventListener("change", e => { S.win = +e.target.value; S.t = 0; refresh(); });
+  $("tslider").addEventListener("input", e => { S.t = +e.target.value; S.playing = false; $("playBtn").textContent = "Play"; drawAnim(S.t, dCache); drawPlot(S.t, dCache); $("tval").textContent = S.t.toFixed(2) + " s"; });
+  window.addEventListener("resize", refresh);
+
+  let last = performance.now();
+  function loop(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (S.playing) { S.t += dt * S.speed; if (S.t > T_END) S.t = 0; $("tslider").value = S.t; $("tval").textContent = S.t.toFixed(2) + " s"; drawAnim(S.t, dCache); drawPlot(S.t, dCache); }
+    requestAnimationFrame(loop);
+  }
+  $("playBtn").textContent = S.playing ? "Pause" : "Play";
+  syncFromWW(); setInputs(); refresh(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
